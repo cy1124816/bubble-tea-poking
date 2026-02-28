@@ -1,20 +1,52 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 🧋 奶茶戳戳
 
-# Run and deploy your AI Studio app
+> 你的专属奶茶品鉴手记 | cy的第一个vibe coding产品
 
-This contains everything you need to run your app locally.
+## ✨ 这是什么？
 
-View your app in AI Studio: https://ai.studio/apps/ef7d1d9d-601f-46eb-bbe6-ed750283e70d
+一个超级可爱的奶茶记录应用！每次喝完奶茶都想记录下来，但又懒得写日记？奶茶戳戳来啦～
 
-## Run Locally
+用最简单的方式，记录每一杯奶茶的甜蜜时刻 🌟
 
-**Prerequisites:**  Node.js
+## 🎯 功能亮点
+
+- 📅 **日历视图** - 一眼看完这个月喝了多少杯
+- ⭐ **评分系统** - 5星好评还是踩雷？一目了然
+- 📊 **数据统计** - 你最爱的品牌、平均消费、喝茶频率全知道
+- 🏷️ **奶茶图鉴** - 收集你喝过的所有品牌
+- 🔍 **快速搜索** - 想找某杯奶茶？秒找到
+- 💾 **本地存储** - 数据保存在浏览器，隐私满分
+
+## 🚀 在线体验
+
+**无需下载，直接使用：**
+👉 https://cy1124816.github.io/bubble-tea-poking/
+
+**也可以试试（需要 VPN）：**
+👉 https://bubble-tea-deploy.vercel.app
+
+## 📱 使用技巧
+
+1. 点击底部 ➕ 按钮，添加你的第一杯奶茶
+2. 填写品牌、名称、糖度、冰度、价格
+3. 给个评分，写写感受
+4. 保存后自动出现在日历上
+5. 左滑记录可以编辑或删除哦
+
+## 💡 适合谁用？
+
+- 🧋 **奶茶爱好者** - 记录每一杯的甜蜜回忆
+- 📈 **数据控** - 分析自己的奶茶消费习惯
+- 🎨 **颜值党** - 界面超可爱，用着开心
+- 💰 **理财达人** - 看看这个月在奶茶上花了多少钱
 
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## 🤝 贡献
+
+这是我的第一个 vibe coding 作品！如果你有任何建议或想法，欢迎提 Issue～
+
+---
+
+**用心记录每一杯奶茶，让生活多一点甜 🧋✨**
+
+*Made with ☕ and 💖 by cy*

@@ -1,7 +1,0 @@
-{
-  "name": "奶茶戳戳",
-  "description": "一款简约可爱的奶茶品鉴手记，使用 AI 识别。",
-  "requestFramePermissions": [
-    "camera"
-  ]
-}

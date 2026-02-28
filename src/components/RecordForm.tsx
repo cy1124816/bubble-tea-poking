@@ -1,6 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Camera, X, Loader2, Sparkles, Upload, Image as ImageIcon, ScanText } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Camera, X, Loader2, Image as ImageIcon, ScanText } from 'lucide-react';
 import { TeaRecord } from '../types';
+import { recognizeText } from '../services/ocrService';
+import { recognizeTextWithBaidu } from '../services/baiduOcrService';
+import { parseTeaInfo } from '../services/textParser';
 
 interface RecordFormProps {
   initialData?: TeaRecord;
@@ -48,7 +51,12 @@ export const RecordForm: React.FC<RecordFormProps> = ({ initialData, onSave, onC
   const [currentTag, setCurrentTag] = useState('');
   const [tags, setTags] = useState<string[]>(initialData?.tags || []);
 
+  // OCR 识别状态
+  const [isRecognizing, setIsRecognizing] = useState(false);
+  const [recognitionProgress, setRecognitionProgress] = useState(0);
+
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const ocrInputRef = useRef<HTMLInputElement>(null);
 
   // Handle Cover Photo (Visual Only)
   const handleCoverChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,6 +121,135 @@ export const RecordForm: React.FC<RecordFormProps> = ({ initialData, onSave, onC
       }
   };
 
+  // 处理拍照识别
+  const handleOCRImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsRecognizing(true);
+      setRecognitionProgress(10);
+
+      console.log('=== OCR 识别开始 ===');
+      console.log('图片文件:', file.name, '大小:', (file.size / 1024).toFixed(2), 'KB');
+
+      // 识别文字 - 优先使用百度 OCR，失败则降级到 Tesseract.js
+      setRecognitionProgress(20);
+      let text = '';
+      let ocrMethod = '';
+
+      try {
+        console.log('尝试使用百度 OCR（高精度）...');
+        text = await recognizeTextWithBaidu(file);
+        ocrMethod = '百度 OCR';
+        console.log('百度 OCR 识别成功');
+      } catch (baiduError) {
+        console.warn('百度 OCR 识别失败，降级到 Tesseract.js:', baiduError);
+        console.log('使用 Tesseract.js 离线识别...');
+        text = await recognizeText(file);
+        ocrMethod = 'Tesseract.js (离线)';
+        console.log('Tesseract.js 识别完成');
+      }
+
+      console.log('=== OCR 识别完成 ===');
+      console.log('识别方式:', ocrMethod);
+      console.log('识别到的原始文字:\n', text);
+      console.log('文字长度:', text.length, '字符');
+
+      setRecognitionProgress(60);
+
+      // 解析信息
+      const parsed = parseTeaInfo(text);
+      console.log('=== 文字解析完成 ===');
+      console.log('解析结果:', JSON.stringify(parsed, null, 2));
+
+      setRecognitionProgress(80);
+
+      // 统计识别到的字段数量
+      let recognizedCount = 0;
+      const recognizedFields: string[] = [];
+      const updates: any = {};
+
+      // 自动填充表单 - 使用批量更新以确保所有字段一起更新
+      if (parsed.brand) {
+        updates.brand = parsed.brand;
+        recognizedCount++;
+        recognizedFields.push(`✓ 品牌: ${parsed.brand}`);
+        console.log('填入品牌:', parsed.brand);
+      }
+      if (parsed.name) {
+        updates.name = parsed.name;
+        recognizedCount++;
+        recognizedFields.push(`✓ 名称: ${parsed.name}`);
+        console.log('填入名称:', parsed.name);
+      }
+      if (parsed.sugar) {
+        updates.sugar = parsed.sugar;
+        recognizedCount++;
+        recognizedFields.push(`✓ 糖度: ${parsed.sugar}`);
+        console.log('填入糖度:', parsed.sugar);
+      }
+      if (parsed.ice) {
+        updates.ice = parsed.ice;
+        recognizedCount++;
+        recognizedFields.push(`✓ 冰度: ${parsed.ice}`);
+        console.log('填入冰度:', parsed.ice);
+      }
+      if (parsed.price) {
+        updates.price = String(parsed.price);
+        recognizedCount++;
+        recognizedFields.push(`✓ 价格: ¥${parsed.price}`);
+        console.log('填入价格:', parsed.price);
+      }
+
+      // 批量更新表单数据
+      if (Object.keys(updates).length > 0) {
+        console.log('批量更新表单:', updates);
+        setFormData(prev => ({ ...prev, ...updates }));
+        // 清除错误提示
+        if (updates.brand || updates.name) {
+          setErrors(prev => ({
+            ...prev,
+            brand: updates.brand ? false : prev.brand,
+            name: updates.name ? false : prev.name
+          }));
+        }
+      }
+
+      setRecognitionProgress(100);
+
+      // 显示识别结果
+      console.log('=== 识别流程完成 ===');
+      console.log('成功识别字段数:', recognizedCount);
+
+      if (recognizedCount > 0) {
+        const message = `🎉 识别成功！\n\n已自动填入 ${recognizedCount} 个字段：\n${recognizedFields.join('\n')}\n\n💡 请检查并修正识别结果`;
+        alert(message);
+        console.log('显示成功提示');
+      } else {
+        const debugInfo = text.length > 0
+          ? `识别到的文字（共 ${text.length} 字符）：\n${text.substring(0, 200)}${text.length > 200 ? '...' : ''}`
+          : '未识别到任何文字';
+        const message = `⚠️ 识别完成，但未能提取到有效信息\n\n${debugInfo}\n\n💡 建议：\n1. 确保照片清晰且光线充足\n2. 奶茶标签文字完整可见\n3. 尝试重新拍照或手动输入`;
+        alert(message);
+        console.log('未识别到有效信息');
+      }
+    } catch (error) {
+      console.error('=== OCR 识别失败 ===');
+      console.error('错误详情:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      alert(`❌ 识别失败\n\n错误信息：${errorMessage}\n\n💡 请重试或手动输入`);
+    } finally {
+      setIsRecognizing(false);
+      setRecognitionProgress(0);
+      // 清空 input，允许重复选择同一文件
+      if (ocrInputRef.current) {
+        ocrInputRef.current.value = '';
+      }
+      console.log('=== OCR 流程结束 ===\n');
+    }
+  };
+
   return (
     <div className="bg-cream min-h-full pb-6 animate-fade-in">
       <div className="sticky top-0 bg-cream/95 backdrop-blur z-20 px-6 py-4 flex justify-between items-center border-b border-milk-tea-100">
@@ -129,6 +266,58 @@ export const RecordForm: React.FC<RecordFormProps> = ({ initialData, onSave, onC
       </div>
 
       <div className="p-6 space-y-6 max-w-md mx-auto">
+        {/* OCR 识别按钮 */}
+        <div className="bg-gradient-to-r from-milk-tea-100 to-taro/30 rounded-2xl p-4 border border-milk-tea-200">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <ScanText size={20} className="text-milk-tea-700" />
+                <h3 className="font-bold text-milk-tea-900">智能识别</h3>
+              </div>
+              <p className="text-xs text-milk-tea-600">拍照识别奶茶标签，自动填充信息</p>
+            </div>
+            <input
+              type="file"
+              ref={ocrInputRef}
+              onChange={handleOCRImage}
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => ocrInputRef.current?.click()}
+              disabled={isRecognizing}
+              className="flex items-center gap-2 px-4 py-2.5 bg-milk-tea-800 text-cream rounded-xl font-semibold shadow-md hover:bg-milk-tea-900 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isRecognizing ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  <span className="text-sm">识别中...</span>
+                </>
+              ) : (
+                <>
+                  <Camera size={18} />
+                  <span className="text-sm">拍照</span>
+                </>
+              )}
+            </button>
+          </div>
+          {isRecognizing && (
+            <div className="mt-3">
+              <div className="w-full bg-milk-tea-200 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-milk-tea-800 h-full transition-all duration-300 rounded-full"
+                  style={{ width: `${recognitionProgress}%` }}
+                />
+              </div>
+              <p className="text-xs text-milk-tea-600 mt-1 text-center">
+                正在识别图片... {recognitionProgress}%
+              </p>
+            </div>
+          )}
+        </div>
+
         {/* Cover Image Section */}
         <div className="relative group">
             <input 
